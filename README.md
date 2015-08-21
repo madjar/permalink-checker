@@ -24,6 +24,7 @@ Features
 - Works with atom feed (RSS support could easily be added)
 - Check the links of the article
 - Check the titles of the articles are actually in the page
+- Color output!
 
 Installation
 ------------
