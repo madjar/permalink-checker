@@ -1,0 +1,27 @@
+name:                permalink-checker
+version:             0.1.0.0
+synopsis:            Simple project template from stack
+description:         Please see README.md
+homepage:            http://github.com/madjar/permalink-checker#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Georges Dubus
+maintainer:          georges.dubus@compiletoi.net
+copyright:           2015 Georges Dubus
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable permalink-checker
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , feed
+                     , lens
+                     , http-client
+                     , rainbow
+                     , wreq
+                     , optparse-simple
+                     , bytestring
+                     , text
