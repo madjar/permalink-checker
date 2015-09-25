@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Control.Exception
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
@@ -58,8 +59,9 @@ check Check {..} =
 
 checkPage :: String -> Page -> ExceptT String IO ()
 checkPage root (Page {..}) =
-  do r <- liftIO (get (root ++ url)) `catchE` handler
+  do r <- ExceptT $ fmap Right (get (root ++ url)) `catch` handler
      let nameInPage = pack name `isInfixOf` (r ^. responseBody . TL.utf8)
      when (lookupName && not nameInPage)
           (throwE "name not found in page")
-  where handler (StatusCodeException s _ _) = throwE (s ^. statusMessage . T.utf8 . T.unpacked)
+  where handler (StatusCodeException s _ _) = (return . Left) (s ^. statusMessage . T.utf8 . T.unpacked)
+        handler e = (return . Left . show) e
