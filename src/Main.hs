@@ -6,6 +6,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Except
 import qualified Data.ByteString.Char8 as B
+import Data.Maybe
 import Data.Text.Lazy (isInfixOf, pack)
 import Data.Text.Lazy.Lens as TL
 import Data.Text.Strict.Lens as T
@@ -31,19 +32,25 @@ main = do ((), runCmd) <-
                              addCommand "check"
                                         "Check every url in a checklist"
                                         check
-                                        (strArgument (metavar "CHECKLIST_FILE"))
+                                        (Check <$> strArgument (metavar "CHECKLIST_FILE")
+                                               <*> optional (strOption (long "root" <> metavar "ROOT")))
           runCmd
+
 
 checkListFromAtom :: String -> IO ()
 checkListFromAtom atom = do checklist <- generateCheckList atom
                             B.putStrLn (encode checklist)
 
-check :: FilePath -> IO ()
-check checklistFile =
+data Check = Check { checklistFile :: FilePath
+                   , configuredRoot :: Maybe String}
+
+check :: Check -> IO ()
+check Check {..} =
   do (Just (CheckList {..})) <- decodeFile checklistFile
-     putStrLn $ "Checking " ++ root
+     let rootToCheck = fromMaybe root configuredRoot
+     putStrLn $ "Checking " ++ rootToCheck
      forM_ pages $ \p@Page{..} -> do
-       result <- runExceptT $ checkPage root p
+       result <- runExceptT $ checkPage rootToCheck p
        let display = name <> " (" <> url <> ")"
        putChunkLn $ case result of
                       (Left msg) -> chunk ("✗ " <> display <> " ==> " <> msg) & fore red
