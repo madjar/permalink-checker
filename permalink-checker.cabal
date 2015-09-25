@@ -29,3 +29,4 @@ executable permalink-checker
                      , text
                      , yaml
                      , transformers
+                     , url

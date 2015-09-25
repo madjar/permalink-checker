@@ -40,17 +40,18 @@ checkListFromAtom atom = do checklist <- generateCheckList atom
 
 check :: FilePath -> IO ()
 check checklistFile =
-  do (Just (CheckList urls)) <- decodeFile checklistFile
-     forM_ urls $ \u@Url{..} -> do
-       result <- runExceptT $ checkUrl u
+  do (Just (CheckList {..})) <- decodeFile checklistFile
+     putStrLn $ "Checking " ++ root
+     forM_ pages $ \p@Page{..} -> do
+       result <- runExceptT $ checkPage root p
        let display = name <> " (" <> url <> ")"
        putChunkLn $ case result of
                       (Left msg) -> chunk ("✗ " <> display <> " ==> " <> msg) & fore red
                       (Right ()) -> chunk ("✓ " <> display) & fore green
 
-checkUrl :: Url -> ExceptT String IO ()
-checkUrl (Url {..}) =
-  do r <- liftIO (get url) `catchE` handler
+checkPage :: String -> Page -> ExceptT String IO ()
+checkPage root (Page {..}) =
+  do r <- liftIO (get (root ++ url)) `catchE` handler
      let nameInPage = pack name `isInfixOf` (r ^. responseBody . TL.utf8)
      when (lookupName && not nameInPage)
           (throwE "name not found in page")
