@@ -1,12 +1,12 @@
 module Atom where
 
 import CheckList
-import Network.Wreq
-import Text.Feed.Types (Feed (AtomFeed))
-import Text.Feed.Import (parseFeedSource)
-import Text.Atom.Feed (feedEntries, txtToString, entryTitle, linkHref, entryLinks)
 import Control.Lens
 import Data.Text.Lazy.Lens (utf8)
+import Network.Wreq
+import Text.Atom.Feed (feedEntries, txtToString, entryTitle, linkHref, entryLinks)
+import Text.Feed.Import (parseFeedSource)
+import Text.Feed.Types (Feed (AtomFeed))
 
 generateCheckList :: String -> IO CheckList
 generateCheckList atom = do articles <- articlesFromAtom atom

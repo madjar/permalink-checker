@@ -1,26 +1,19 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
-import Control.Exception
 import Control.Lens
 import Control.Monad
-import Data.ByteString (ByteString)
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Except
+import qualified Data.ByteString.Char8 as B
 import Data.Text.Lazy (isInfixOf, pack)
 import Data.Text.Lazy.Lens as TL
-import qualified Data.Text.IO as T
-import qualified Data.ByteString.Char8 as B
-import Data.Text.Encoding
 import Data.Text.Strict.Lens as T
+import Data.Yaml (encode, decodeFile)
 import Network.HTTP.Client (HttpException(StatusCodeException))
 import Network.Wreq
 import Options.Applicative.Simple
 import Rainbow
-import Text.Atom.Feed
-import Text.Feed.Import
-import Text.Feed.Types
-import Data.Yaml (encode, decodeFile)
-import Control.Monad.Trans.Except
-import Control.Monad.IO.Class
 
 import Atom
 import CheckList
