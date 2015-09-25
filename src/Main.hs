@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import Control.Exception
@@ -6,6 +7,9 @@ import Control.Monad
 import Data.ByteString (ByteString)
 import Data.Text.Lazy (isInfixOf, pack)
 import Data.Text.Lazy.Lens as TL
+import qualified Data.Text.IO as T
+import qualified Data.ByteString.Char8 as B
+import Data.Text.Encoding
 import Data.Text.Strict.Lens as T
 import Network.HTTP.Client (HttpException(StatusCodeException))
 import Network.Wreq
@@ -14,41 +18,47 @@ import Rainbow
 import Text.Atom.Feed
 import Text.Feed.Import
 import Text.Feed.Types
+import Data.Yaml (encode, decodeFile)
+import Control.Monad.Trans.Except
+import Control.Monad.IO.Class
+
+import Atom
+import CheckList
 
 main :: IO ()
-main = do (atomFile, ()) <- simpleOptions "0.1"
-                                          "Atom permalink checking tool"
-                                          ""
-                                          (strArgument (metavar "ATOM_FILE"))
-                                          empty
-          doit atomFile
+main = do ((), runCmd) <-
+            simpleOptions "0.1"
+                          "Permalink checking tool"
+                          ""
+                          (pure ()) $
+                          do addCommand "atom"
+                                        "Generate a checklist from the url of an atom file"
+                                        checkListFromAtom
+                                        (strArgument (metavar "ATOM_URL"))
+                             addCommand "check"
+                                        "Check every url in a checklist"
+                                        check
+                                        (strArgument (metavar "CHECKLIST_FILE"))
+          runCmd
 
-doit :: FilePath -> IO ()
-doit atomFile =
-  do articles <- findArticles atomFile
-     forM_ articles $ \a@(Article title url) -> do
-       errorString <- checkArticle a
-       let display = title <> " (" <> url <> ")"
-       putChunkLn $ case errorString of
-                      (Just msg) -> chunk ("✗ " <> display <> " ==> " <> msg) & fore red
-                      Nothing    -> chunk ("✓ " <> display) & fore green
+checkListFromAtom :: String -> IO ()
+checkListFromAtom atom = do checklist <- generateCheckList atom
+                            B.putStrLn (encode checklist)
 
+check :: FilePath -> IO ()
+check checklistFile =
+  do (Just (CheckList urls)) <- decodeFile checklistFile
+     forM_ urls $ \u@Url{..} -> do
+       result <- runExceptT $ checkUrl u
+       let display = name <> " (" <> url <> ")"
+       putChunkLn $ case result of
+                      (Left msg) -> chunk ("✗ " <> display <> " ==> " <> msg) & fore red
+                      (Right ()) -> chunk ("✓ " <> display) & fore green
 
-
-data Article = Article String URI deriving Show
-
-findArticles :: FilePath -> IO [Article]
-findArticles atomFile = do (AtomFeed feed) <- parseFeedFromFile atomFile
-                           return (map entryToArticle (feedEntries feed))
-  where entryToArticle = Article <$> txtToString . entryTitle
-                                 <*> linkHref . head . entryLinks
-
-type ErrorString = String
-
-checkArticle :: Article -> IO (Maybe ErrorString)
-checkArticle (Article title url) = checkTitlePresence `catch` handler
-  where checkTitlePresence = do r <- get url
-                                if pack title `isInfixOf` (r ^. responseBody . TL.utf8)
-                                   then return Nothing
-                                   else return (Just "title not found in page")
-        handler (StatusCodeException s _ _) = return $ Just (s ^. statusMessage . T.utf8 . T.unpacked)
+checkUrl :: Url -> ExceptT String IO ()
+checkUrl (Url {..}) =
+  do r <- liftIO (get url) `catchE` handler
+     let nameInPage = pack name `isInfixOf` (r ^. responseBody . TL.utf8)
+     when (lookupName && not nameInPage)
+          (throwE "name not found in page")
+  where handler (StatusCodeException s _ _) = throwE (s ^. statusMessage . T.utf8 . T.unpacked)
